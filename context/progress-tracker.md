@@ -5,11 +5,11 @@ change.
 
 ## Current Phase
 
-- Editor chrome foundation complete
+- Authentication integration complete
 
 ## Current Goal
 
-- Prepare for the next editor feature chapter.
+- Prepare for the next feature chapter.
 
 ## Completed
 
@@ -21,6 +21,17 @@ change.
 - Added `components/editor/editor-shell.tsx` and rendered it from `app/page.tsx` so the navbar/sidebar interaction is implemented.
 - Moved `EditorShell` into `app/layout.tsx` so the editor navbar and project sidebar frame route content from the layout.
 - Verified `npx tsc --noEmit` and `npm run lint` pass.
+- Installed `@clerk/ui` and added Clerk's dark theme with app CSS-variable overrides in `lib/clerk-appearance.ts`.
+- Wrapped the root layout with `ClerkProvider`, using existing Clerk env vars and `/sign-in`, `/sign-up`, and `/editor` redirect configuration.
+- Added root `proxy.ts` with protected-first Clerk route protection; only `/sign-in(.*)` and `/sign-up(.*)` remain public.
+- Moved editor chrome into `app/(app)/layout.tsx`, added `/editor`, and redirected `/` to `/editor`.
+- Added minimal two-panel desktop auth pages and mobile form-only auth pages at `/sign-in/[[...sign-in]]` and `/sign-up/[[...sign-up]]`.
+- Added Clerk's built-in `UserButton` to the editor navbar right section while keeping default Clerk profile/menu flows.
+- Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass.
+- Updated auth pages to a screenshot-aligned 50/50 split layout with a colored left brand panel, feature rows with lucide icons, and centered Clerk forms on the right.
+- Normalized app font variables so the UI guideline tokens `--font-sans` and `--font-mono` resolve to the configured Geist fonts.
+- Refined the auth screenshot match with dedicated `--brand-accent`, `--auth-panel`, and `--auth-icon` tokens, a rounded Ghost AI brand mark, stronger left-side color contrast, and wider feature spacing.
+- Fixed Clerk logout navigation by setting sign-out redirects to the public `/sign-in` route, avoiding post-logout navigation to protected `/`.
 
 ## In Progress
 
@@ -43,3 +54,4 @@ change.
 
 - Read `AGENTS.md`; this project uses Next.js `16.2.4` and App Router. Relevant local Next docs were checked in `node_modules/next/dist/docs/01-app/index.md`.
 - For the editor chrome work, checked the local Next.js App Router server/client component guide in `node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md`.
+- For the auth work, checked the local Next.js 16 Proxy docs in `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md` and `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`.

@@ -1,8 +1,10 @@
 "use client"
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { UserButton } from "@clerk/nextjs"
 
 import { Button } from "@/components/ui/button"
+import { clerkAppearance } from "@/lib/clerk-appearance"
 import { cn } from "@/lib/utils"
 
 type EditorNavbarProps = {
@@ -40,7 +42,12 @@ export function EditorNavbar({
 
       <div className="min-w-0" />
 
-      <div className="min-w-0" />
+      <div className="flex min-w-0 items-center justify-end">
+        <UserButton
+          appearance={clerkAppearance}
+          userProfileProps={{ appearance: clerkAppearance }}
+        />
+      </div>
     </header>
   )
 }
