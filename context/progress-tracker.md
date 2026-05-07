@@ -38,6 +38,8 @@ change.
 - Wired editor home create, sidebar create, sidebar rename, and sidebar delete actions to the dialog flow.
 - Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass.
 
+- Implemented Prisma setup from `context/feature_specs/05_prisma.md` with Project and ProjectCollaborator models, Prisma client singleton with adapter for PostgreSQL, and successful migration and build.
+
 ## In Progress
 
 - None currently.
