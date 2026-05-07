@@ -78,8 +78,7 @@ export function ProjectDialogProvider({
                 </EditorDialogDescription>
               ) : dialog?.type === "delete" ? (
                 <EditorDialogDescription>
-                  This will remove {dialog.project.name} from your mock project
-                  list.
+                  This will permanently delete {dialog.project.name}.
                 </EditorDialogDescription>
               ) : (
                 <EditorDialogDescription>

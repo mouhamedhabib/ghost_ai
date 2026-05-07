@@ -5,11 +5,11 @@ change.
 
 ## Current Phase
 
-- Authentication integration complete
+- All core features complete: auth integration, editor shell, project management UI, database setup, and project APIs wired to frontend.
 
 ## Current Goal
 
-- Prepare for the next feature chapter.
+- Ready for next feature chapter.
 
 ## Completed
 
@@ -39,6 +39,29 @@ change.
 - Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass.
 
 - Implemented Prisma setup from `context/feature_specs/05_prisma.md` with Project and ProjectCollaborator models, Prisma client singleton with adapter for PostgreSQL, and successful migration and build.
+- Implemented project API routes from `context/feature_specs/06project_apis.md`:
+  - `GET /api/projects` lists current user's projects
+  - `POST /api/projects` creates a project with default name "Untitled Project"
+  - `PATCH /api/projects/[projectId]` renames project (owner-only)
+  - `DELETE /api/projects/[projectId]` deletes project (owner-only)
+  - All routes enforce authentication (401 for unauthenticated, 403 for non-owners)
+  - Uses Clerk auth() and Prisma with PostgreSQL adapter
+- Installed missing `@prisma/client@^7.8.0` dependency
+- Verified `npm run build` passes with all API routes compiled
+
+- Implemented wire-up from `context/feature_specs/07wire_editor_home.md`:
+  - Created `lib/projects.ts` with server-side `getProjectsForUser()` that fetches owned and shared projects using Clerk auth and Prisma
+  - Converted `editor-home.tsx` to a server component that fetches real project data server-side
+  - Created `editor-home-client.tsx` client wrapper that calls `setInitialProjects()` to populate sidebar/dialogs on mount
+  - Updated `useProjectDialogs` hook to call real API endpoints:
+    - `POST /api/projects` creates project and navigates to workspace on success
+    - `PATCH /api/projects/[id]` renames project and updates state on success
+    - `DELETE /api/projects/[id]` deletes project and redirects if deleting active workspace
+  - Sidebar now displays real owned and shared projects from database
+  - Create dialog generates room ID preview from project name
+  - Rename dialog pre-fills current project name
+  - Delete dialog shows project name being deleted
+  - Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass
 
 ## In Progress
 
