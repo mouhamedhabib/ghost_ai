@@ -1,6 +1,7 @@
 "use client"
 
 import { Pencil, Plus, Trash2, X } from "lucide-react"
+import Link from "next/link"
 
 import { useProjectDialogContext } from "@/components/editor/project-dialog-provider"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,7 @@ type ProjectSidebarProps = {
   isOpen: boolean
   onClose: () => void
   className?: string
+  currentRoomId?: string
 }
 
 function EmptyProjectState({ label }: { label: string }) {
@@ -23,8 +25,10 @@ function EmptyProjectState({ label }: { label: string }) {
 
 function ProjectList({
   access,
+  currentRoomId,
 }: {
   access: "owned" | "shared"
+  currentRoomId?: string
 }) {
   const {
     openDeleteDialog,
@@ -44,21 +48,22 @@ function ProjectList({
   return (
     <div className="grid gap-1">
       {scopedProjects.map((project) => (
-        <div
+        <Link
           key={project.id}
-          className="group flex min-h-12 items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          href={`/editor/${project.id}`}
+          className={cn(
+            "group flex min-h-12 items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/50",
+            project.id === currentRoomId && "bg-sidebar-accent text-sidebar-accent-foreground"
+          )}
         >
-          <button
-            type="button"
-            className="min-w-0 flex-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/50"
-          >
+          <div className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">
               {project.name}
             </span>
             <span className="block truncate text-xs text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground/70">
               {project.slug}
             </span>
-          </button>
+          </div>
           {project.access === "owned" ? (
             <div className="flex shrink-0 items-center gap-1">
               <Button
@@ -66,7 +71,11 @@ function ProjectList({
                 variant="ghost"
                 size="icon-xs"
                 aria-label={`Rename ${project.name}`}
-                onClick={() => openRenameDialog(project)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openRenameDialog(project)
+                }}
               >
                 <Pencil />
               </Button>
@@ -75,13 +84,17 @@ function ProjectList({
                 variant="ghost"
                 size="icon-xs"
                 aria-label={`Delete ${project.name}`}
-                onClick={() => openDeleteDialog(project)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openDeleteDialog(project)
+                }}
               >
                 <Trash2 />
               </Button>
             </div>
           ) : null}
-        </div>
+        </Link>
       ))}
     </div>
   )
@@ -91,6 +104,7 @@ export function ProjectSidebar({
   isOpen,
   onClose,
   className,
+  currentRoomId,
 }: ProjectSidebarProps) {
   const { openCreateDialog } = useProjectDialogContext()
 
@@ -134,10 +148,10 @@ export function ProjectSidebar({
             <TabsTrigger value="shared">Shared</TabsTrigger>
           </TabsList>
           <TabsContent value="my-projects" className="min-h-0">
-            <ProjectList access="owned" />
+            <ProjectList access="owned" currentRoomId={currentRoomId} />
           </TabsContent>
           <TabsContent value="shared" className="min-h-0">
-            <ProjectList access="shared" />
+            <ProjectList access="shared" currentRoomId={currentRoomId} />
           </TabsContent>
         </Tabs>
 
