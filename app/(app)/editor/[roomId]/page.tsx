@@ -1,4 +1,5 @@
-import { checkProjectAccess } from '@/lib/project-access';
+import { checkProjectAccess, getCurrentIdentity } from '@/lib/project-access';
+import { getProjectsForUser } from '@/lib/projects';
 import { WorkspacePage } from '@/components/editor/workspace-page';
 
 type WorkspacePageProps = {
@@ -15,5 +16,15 @@ export default async function EditorWorkspacePage({
     return null;
   }
 
-  return <WorkspacePage projectId={project.id} projectName={project.name} />;
+  const { owned, shared } = await getProjectsForUser();
+  const identity = await getCurrentIdentity();
+
+  return (
+    <WorkspacePage
+      projectId={project.id}
+      projectName={project.name}
+      initialProjects={[...owned, ...shared]}
+      canManageSharing={project.ownerId === identity?.userId}
+    />
+  );
 }

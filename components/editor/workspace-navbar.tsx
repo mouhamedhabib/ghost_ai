@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 
 type WorkspaceNavbarProps = {
   projectName: string;
+  onShareProject: () => void;
   onToggleAiSidebar: () => void;
 };
 
 export function WorkspaceNavbar({
   projectName,
+  onShareProject,
   onToggleAiSidebar,
 }: WorkspaceNavbarProps) {
   return (
@@ -19,13 +21,16 @@ export function WorkspaceNavbar({
 
       <div className="flex items-center gap-1">
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           aria-label="Share project"
+          onClick={onShareProject}
         >
           <Share2 className="h-4 w-4" />
         </Button>
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           aria-label="Toggle AI sidebar"

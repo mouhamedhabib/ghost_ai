@@ -15,7 +15,7 @@ Create a hook in `hooks/` that manages dialog state and project mutations.
 
 ** Create **
 
-- manage Icreate dialog state
+- manage create dialog state
 - manage project name input
 - generate a short unique suffix
 - slugify the name to create the room ID
@@ -26,7 +26,6 @@ The project ID and Liveblocks room ID should stay aligned.
 
 ** Rename **
 
-I
 - store target project id + current name
 - call `PATCH /api/projects/[id]`
 - refresh on success
@@ -34,7 +33,7 @@ I
 ** Delete **
 
 - store target project
-- call `DELETE /api/projects/` [id]
+- call `DELETE /api/projects/[id]`
 - redirect to `/editor` if deleting the active workspace
 - otherwise refresh
 
@@ -43,7 +42,7 @@ I
 Connect the hook to the sidebar and dialogs.
 
 - create dialog shows room ID preview
-- rename dialpg pre-fills current name
+- rename dialog pre-fills current name
 - delete dialog shows project name
 
 ### Check When Done
@@ -53,5 +52,3 @@ Connect the hook to the sidebar and dialogs.
 - rename updates correctly
 - delete refreshes or redirects correctly
 - `npm run build` passes
-
-I

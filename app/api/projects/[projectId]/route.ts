@@ -20,32 +20,70 @@ export async function PATCH(
   try {
     const { projectId } = await params;
 
+    // Parse and validate request body first
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch (_error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    // Validate body fields if provided
+    if (body.name !== undefined) {
+      if (typeof body.name !== 'string') {
+        return NextResponse.json(
+          { error: 'Field name must be a string' },
+          { status: 400 }
+        );
+      }
+      if (body.name.length > 255) {
+        return NextResponse.json(
+          { error: 'Field name must not exceed 255 characters' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (body.description !== undefined) {
+      if (typeof body.description !== 'string') {
+        return NextResponse.json(
+          { error: 'Field description must be a string' },
+          { status: 400 }
+        );
+      }
+      if (body.description.length > 1000) {
+        return NextResponse.json(
+          { error: 'Field description must not exceed 1000 characters' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check if project exists and belongs to user
     const project = await prisma.project.findUnique({
       where: { id: projectId },
     });
 
-    if (!project) {
+    // Return 404 if project doesn't exist or doesn't belong to user (don't leak existence)
+    if (!project || project.ownerId !== userId) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
       );
     }
 
-    if (project.ownerId !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
+    // Update project with validated values
+    const name = body.name ?? project.name;
+    const description = body.description !== undefined ? body.description : project.description;
 
-    // Update project
-    const body = await request.json();
     const updatedProject = await prisma.project.update({
       where: { id: projectId },
       data: {
-        name: body.name || project.name,
-        description: body.description !== undefined ? body.description : project.description,
+        name,
+        description,
       },
     });
 
@@ -78,17 +116,11 @@ export async function DELETE(
       where: { id: projectId },
     });
 
-    if (!project) {
+    // Return 404 if project doesn't exist or doesn't belong to user (don't leak existence)
+    if (!project || project.ownerId !== userId) {
       return NextResponse.json(
         { error: 'Project not found' },
         { status: 404 }
-      );
-    }
-
-    if (project.ownerId !== userId) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
       );
     }
 

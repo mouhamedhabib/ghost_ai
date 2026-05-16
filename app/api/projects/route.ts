@@ -4,13 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/projects - list current user's projects
 export async function GET() {
-  const { userId } = await auth();
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const projects = await prisma.project.findMany({
       where: { ownerId: userId },
       orderBy: { createdAt: 'desc' },
@@ -28,20 +28,70 @@ export async function GET() {
 
 // POST /api/projects - create project
 export async function POST(request: NextRequest) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const projectName = body.name || 'Untitled Project';
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Parse request body with error handling
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch (_error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    // Validate and process name
+    let projectName = 'Untitled Project';
+    if (body.name !== undefined) {
+      if (typeof body.name !== 'string') {
+        return NextResponse.json(
+          { error: 'Field name must be a string' },
+          { status: 400 }
+        );
+      }
+      if (body.name.length === 0) {
+        // Empty string falls back to default
+        projectName = 'Untitled Project';
+      } else if (body.name.length > 255) {
+        return NextResponse.json(
+          { error: 'Field name must not exceed 255 characters' },
+          { status: 400 }
+        );
+      } else {
+        projectName = body.name;
+      }
+    }
+
+    // Validate description
+    let description = null;
+    if (body.description !== undefined) {
+      if (body.description === null) {
+        description = null;
+      } else if (typeof body.description !== 'string') {
+        return NextResponse.json(
+          { error: 'Field description must be a string or null' },
+          { status: 400 }
+        );
+      } else if (body.description.length > 1000) {
+        return NextResponse.json(
+          { error: 'Field description must not exceed 1000 characters' },
+          { status: 400 }
+        );
+      } else {
+        description = body.description;
+      }
+    }
 
     const project = await prisma.project.create({
       data: {
         name: projectName,
-        description: body.description || null,
+        description: description,
         ownerId: userId,
         status: 'DRAFT',
       },

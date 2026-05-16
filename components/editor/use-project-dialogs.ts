@@ -146,10 +146,8 @@ export function useProjectDialogs() {
         setDialog(null)
         setProjectName("")
 
-        // Redirect if deleting active workspace
-        // This is a simple check - if we're on /editor/[id], redirect to /editor
-        const pathSegments = window.location.pathname.split("/")
-        if (pathSegments[2] === "editor" && pathSegments[3] === dialog.project.id) {
+        // Redirect if deleting active workspace (check if currently on /editor/[id])
+        if (window.location.pathname.startsWith(`/editor/${dialog.project.id}`)) {
           router.push("/editor")
         }
       }

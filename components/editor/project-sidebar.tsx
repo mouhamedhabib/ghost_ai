@@ -13,6 +13,7 @@ type ProjectSidebarProps = {
   onClose: () => void
   className?: string
   currentRoomId?: string
+  variant?: "floating" | "workspace"
 }
 
 function EmptyProjectState({ label }: { label: string }) {
@@ -105,8 +106,10 @@ export function ProjectSidebar({
   onClose,
   className,
   currentRoomId,
+  variant = "floating",
 }: ProjectSidebarProps) {
   const { openCreateDialog } = useProjectDialogContext()
+  const isWorkspace = variant === "workspace"
 
   return (
     <>
@@ -117,15 +120,20 @@ export function ProjectSidebar({
         onClick={onClose}
         className={cn(
           "fixed inset-0 z-30 bg-background/65 transition-opacity duration-200 md:hidden",
+          isWorkspace && "top-12",
           isOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
       />
       <aside
-        aria-hidden={!isOpen}
-        inert={!isOpen}
+        aria-hidden={!isOpen && !isWorkspace}
+        inert={!isOpen && !isWorkspace}
         className={cn(
-          "fixed top-16 bottom-4 left-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col rounded-lg border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-background/50 transition-transform duration-200 ease-out",
+          "fixed z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-background/50 transition-transform duration-200 ease-out",
+          isWorkspace
+            ? "top-12 bottom-0 left-0 rounded-none border-y-0 border-l-0 md:static md:z-auto md:w-64 md:shrink-0 md:translate-x-0 md:border-y-0 md:border-l-0 md:shadow-none"
+            : "top-16 bottom-4 left-4 rounded-lg",
           isOpen ? "translate-x-0" : "pointer-events-none -translate-x-[calc(100%+2rem)]",
+          isWorkspace && !isOpen && "md:pointer-events-auto",
           className
         )}
       >

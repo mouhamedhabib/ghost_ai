@@ -33,7 +33,7 @@ export async function checkProjectAccess(projectId: string) {
 
   const isOwner = project.ownerId === identity.userId;
   const isCollaborator = project.collaborators.some(
-    (collab) => collab.email === identity.email
+    (collab) => collab.email.toLowerCase() === identity.email.toLowerCase()
   );
 
   if (!isOwner && !isCollaborator) {

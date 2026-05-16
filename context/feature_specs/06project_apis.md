@@ -1,19 +1,17 @@
-I
-
 The database schema is ready. Build the backend project API routes only.
 
 ## Routes
 
 Create REST endpoints for:
 
--`GET /api/projects' , list current user's projects
-- `POST /api/projects' , create project
--`PATCH /api/projects/[projectId]` , rename project
-- 'DELETE /api/projects/ [projectId]` , delete project
+- `GET /api/projects`, list current user's projects
+- `POST /api/projects`, create project
+- `PATCH /api/projects/[projectId]`, rename project
+- `DELETE /api/projects/[projectId]`, delete project
 
 ## Rules
 
-Use the authenticated Clerk user ID as ownerfd
+Use the authenticated Clerk user ID as owner ID
 
 When creating:
 

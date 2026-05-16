@@ -21,10 +21,11 @@ type EditorHomeClientProps = {
 export function EditorHomeClient({ owned, shared }: EditorHomeClientProps) {
   const { openCreateDialog, setInitialProjects } = useProjectDialogContext()
 
-  // Set initial projects when component mounts
+  // Set initial projects once when component mounts
   React.useEffect(() => {
     setInitialProjects([...owned, ...shared])
-  }, [owned, shared, setInitialProjects])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])  // Mount only - owned and shared are passed from parent server component
 
   return (
     <div className="relative flex h-full min-h-0 items-center justify-center overflow-hidden px-6">
@@ -40,7 +41,7 @@ export function EditorHomeClient({ owned, shared }: EditorHomeClientProps) {
           </p>
         </div>
         <Button type="button" onClick={openCreateDialog}>
-          <Plus />
+          <Plus aria-hidden="true" />
           New Project
         </Button>
       </div>

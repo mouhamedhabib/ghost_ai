@@ -5,7 +5,7 @@ export async function getProjectsForUser() {
   const { userId } = await auth();
   const user = await currentUser();
 
-  if (!userId || !user?.primaryEmailAddress?.emailAddress) {
+  if (!userId) {
     return { owned: [], shared: [] };
   }
 
@@ -16,17 +16,32 @@ export async function getProjectsForUser() {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Get shared projects (where user is a collaborator)
-    const sharedProjects = await prisma.project.findMany({
-      where: {
-        collaborators: {
-          some: {
-            email: user.primaryEmailAddress.emailAddress,
-          },
+    // Get shared projects (where user is a collaborator, excluding owned projects)
+    let sharedProjects: typeof ownedProjects = [];
+    const primaryEmail = user?.primaryEmailAddress?.emailAddress
+      .trim()
+      .toLowerCase();
+
+    if (primaryEmail) {
+      sharedProjects = await prisma.project.findMany({
+        where: {
+          AND: [
+            {
+              collaborators: {
+                some: {
+                  email: primaryEmail,
+                },
+              },
+            },
+            {
+              // Exclude owned projects to avoid duplication
+              ownerId: { not: userId },
+            },
+          ],
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      });
+    }
 
     // Transform to match ProjectItem format
     const owned = ownedProjects.map((project) => ({
@@ -46,6 +61,7 @@ export async function getProjectsForUser() {
     return { owned, shared };
   } catch (error) {
     console.error('Error fetching projects:', error);
-    return { owned: [], shared: [] };
+    // Re-throw to let error boundary handle it
+    throw error;
   }
 }

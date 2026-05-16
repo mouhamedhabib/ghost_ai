@@ -13,7 +13,7 @@ export function AccessDenied() {
         <div>
           <h1 className="text-lg font-semibold">Access Denied</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            You don't have permission to access this project.
+            You do not have permission to access this project.
           </p>
         </div>
         <Button asChild variant="outline">
