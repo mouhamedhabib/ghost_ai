@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@xyflow/react/dist/style.css";
+@import "@liveblocks/react-flow/styles.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -140,4 +142,58 @@
   html {
     @apply font-sans;
     }
+}
+
+@layer components {
+  .ghostai-design-canvas {
+    background:
+      radial-gradient(circle at center, rgb(15 15 17) 0%, rgb(9 9 11) 72%);
+  }
+
+  .ghostai-design-canvas .react-flow__pane {
+    cursor: grab;
+  }
+
+  .ghostai-design-canvas .react-flow__pane.dragging {
+    cursor: grabbing;
+  }
+
+  .ghostai-design-canvas .react-flow__node {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .ghostai-design-canvas .react-flow__node.selected .ghostai-canvas-node svg,
+  .ghostai-design-canvas .react-flow__node.selected .ghostai-canvas-node > div {
+    filter: drop-shadow(0 0 0.35rem rgb(244 244 245 / 18%));
+  }
+
+  .ghostai-canvas-node {
+    align-items: center;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+  }
+
+  .ghostai-canvas-handle {
+    background: rgb(244 244 245);
+    border: 2px solid rgb(24 24 27);
+    height: 0.55rem;
+    opacity: 0;
+    transition: opacity 120ms ease;
+    width: 0.55rem;
+  }
+
+  .ghostai-canvas-node:hover .ghostai-canvas-handle,
+  .react-flow__node.selected .ghostai-canvas-handle {
+    opacity: 1;
+  }
+
+  .ghostai-canvas-minimap {
+    background: rgb(17 17 19 / 92%);
+    border: 1px solid rgb(63 63 70 / 45%);
+    border-radius: 0;
+    box-shadow: none;
+  }
 }

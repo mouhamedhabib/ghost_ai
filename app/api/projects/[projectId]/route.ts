@@ -24,7 +24,7 @@ export async function PATCH(
     let body: Record<string, unknown>;
     try {
       body = await request.json();
-    } catch (_error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
         { status: 400 }

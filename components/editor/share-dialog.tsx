@@ -48,7 +48,10 @@ export function ShareDialog({
   const [isLoading, setIsLoading] = React.useState(false)
   const [isInviting, setIsInviting] = React.useState(false)
   const [removingId, setRemovingId] = React.useState<string | null>(null)
-  const [projectUrl, setProjectUrl] = React.useState(`/editor/${projectId}`)
+  const projectUrl =
+    typeof window === "undefined"
+      ? `/editor/${projectId}`
+      : `${window.location.origin}/editor/${projectId}`
 
   const loadCollaborators = React.useCallback(async () => {
     setIsLoading(true)
@@ -80,11 +83,8 @@ export function ShareDialog({
   }, [projectId])
 
   React.useEffect(() => {
-    setProjectUrl(`${window.location.origin}/editor/${projectId}`)
-  }, [projectId])
-
-  React.useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void loadCollaborators()
     }
   }, [loadCollaborators, open])

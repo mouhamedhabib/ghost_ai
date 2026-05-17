@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { PanelLeftClose, PanelLeftOpen, Zap } from "lucide-react"
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 
+import { EditorCanvas } from "@/components/editor/canvas"
 import { ProjectDialogProvider } from "@/components/editor/project-dialog-provider"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
 import { ShareDialog } from "@/components/editor/share-dialog"
@@ -89,18 +90,7 @@ export function WorkspacePage({
           </div>
 
           <main className="relative min-h-0 flex-1 overflow-hidden bg-zinc-950">
-            <div className="flex h-full items-center justify-center">
-              <div className="flex flex-col items-center gap-3 text-center">
-                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                  <Zap className="h-6 w-6 text-zinc-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">
-                    Canvas coming soon
-                  </p>
-                </div>
-              </div>
-            </div>
+            <EditorCanvas roomId={projectId} />
           </main>
 
           <aside
