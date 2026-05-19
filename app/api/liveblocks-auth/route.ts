@@ -14,8 +14,14 @@ type LiveblocksAuthBody = {
   roomId?: unknown
 }
 
-function getProjectId(body: LiveblocksAuthBody) {
-  const projectId = body.projectId ?? body.room ?? body.roomId
+function getProjectId(body: unknown) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return null
+  }
+
+  const liveblocksBody = body as LiveblocksAuthBody
+  const projectId =
+    liveblocksBody.projectId ?? liveblocksBody.room ?? liveblocksBody.roomId
 
   return typeof projectId === "string" && projectId.length > 0
     ? projectId
@@ -52,7 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  let body: LiveblocksAuthBody
+  let body: unknown
 
   try {
     body = await request.json()

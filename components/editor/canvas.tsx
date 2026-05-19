@@ -119,6 +119,10 @@ const DEFAULT_EDGE_MARKER = {
   height: 18,
 }
 
+function createCanvasNodeId(shape: CanvasNode["data"]["shape"]) {
+  return `${shape}-${crypto.randomUUID()}`
+}
+
 const CanvasNodeActionsContext = React.createContext<{
   updateNodeLabel: (nodeId: string, label: string) => void
   updateNodeColors: (nodeId: string, colorPair: NodeColorPair) => void
@@ -778,10 +782,12 @@ function ShapeDragPreview({ preview }: { preview: ShapeDragPreviewState | null }
 }
 
 function ShapeToolbar({
+  onCreate,
   onDragStart,
   onDragMove,
   onDragEnd,
 }: {
+  onCreate: (shape: ShapeDefinition) => void
   onDragStart: (preview: ShapeDragPreviewState) => void
   onDragMove: (position: Pick<ShapeDragPreviewState, "x" | "y">) => void
   onDragEnd: () => void
@@ -826,6 +832,16 @@ function ShapeToolbar({
     [onDragMove]
   )
 
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, shape: ShapeDefinition) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault()
+        onCreate(shape)
+      }
+    },
+    [onCreate]
+  )
+
   return (
     <div className="pointer-events-auto absolute bottom-15 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-2xl shadow-black/35 backdrop-blur">
       {SHAPES.map((shape) => {
@@ -842,6 +858,8 @@ function ShapeToolbar({
             data-node-shape={shape.shape}
             title={shape.label}
             aria-label={shape.label}
+            onClick={() => onCreate(shape)}
+            onKeyDown={(event) => handleKeyDown(event, shape)}
             onDragStart={(event) => handleDragStart(event, shape)}
             onDrag={handleDrag}
             onDragEnd={onDragEnd}
@@ -965,7 +983,7 @@ function CanvasControlBar({
 }
 
 function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: CanvasTemplate) => void) => void }) {
-  const nodeCounterRef = React.useRef(0)
+  const canvasRef = React.useRef<HTMLDivElement>(null)
   const [shapeDragPreview, setShapeDragPreview] =
     React.useState<ShapeDragPreviewState | null>(null)
   const [reactFlowInstance, setReactFlowInstance] =
@@ -1067,6 +1085,47 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
     redo: handleRedo,
   })
 
+  const createNode = React.useCallback(
+    (
+      payload: ShapeDragPayload,
+      screenPosition?: Pick<ShapeDragPreviewState, "x" | "y">
+    ) => {
+      if (!reactFlowInstance) {
+        return
+      }
+
+      const canvasBounds = canvasRef.current?.getBoundingClientRect()
+      const anchor = screenPosition ?? {
+        x: canvasBounds ? canvasBounds.left + canvasBounds.width / 2 : window.innerWidth / 2,
+        y: canvasBounds ? canvasBounds.top + canvasBounds.height / 2 : window.innerHeight / 2,
+      }
+      const position = reactFlowInstance.screenToFlowPosition(anchor)
+      const nextNode: CanvasNode = {
+        id: createCanvasNodeId(payload.shape),
+        type: "canvas",
+        position: {
+          x: position.x - payload.width / 2,
+          y: position.y - payload.height / 2,
+        },
+        width: payload.width,
+        height: payload.height,
+        measured: {
+          width: payload.width,
+          height: payload.height,
+        },
+        data: {
+          label: SHAPES.find((shape) => shape.shape === payload.shape)?.label ?? "",
+          color: DEFAULT_NODE_COLOR,
+          textColor: DEFAULT_NODE_TEXT_COLOR,
+          shape: payload.shape,
+        },
+      }
+
+      onNodesChange([{ type: "add", item: nextNode }])
+    },
+    [onNodesChange, reactFlowInstance]
+  )
+
   const handleDragOver = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
     if (event.dataTransfer.types.includes(SHAPE_DRAG_MIME_TYPE)) {
       event.preventDefault()
@@ -1087,43 +1146,18 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
     (event: React.DragEvent<HTMLDivElement>) => {
       const payload = readShapeDragPayload(event.dataTransfer)
 
-      if (!payload || !reactFlowInstance) {
+      if (!payload) {
         return
       }
 
       event.preventDefault()
       setShapeDragPreview(null)
-
-      const position = reactFlowInstance.screenToFlowPosition({
+      createNode(payload, {
         x: event.clientX,
         y: event.clientY,
       })
-      const counter = nodeCounterRef.current + 1
-      const nextNode: CanvasNode = {
-        id: `${payload.shape}-${Date.now()}-${counter}`,
-        type: "canvas",
-        position: {
-          x: position.x - payload.width / 2,
-          y: position.y - payload.height / 2,
-        },
-        width: payload.width,
-        height: payload.height,
-        measured: {
-          width: payload.width,
-          height: payload.height,
-        },
-        data: {
-          label: SHAPES.find((shape) => shape.shape === payload.shape)?.label ?? "",
-          color: DEFAULT_NODE_COLOR,
-          textColor: DEFAULT_NODE_TEXT_COLOR,
-          shape: payload.shape,
-        },
-      }
-
-      nodeCounterRef.current = counter
-      onNodesChange([{ type: "add", item: nextNode }])
     },
-    [onNodesChange, reactFlowInstance]
+    [createNode]
   )
 
   const handleConnect = React.useCallback(
@@ -1258,7 +1292,7 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
   )
 
   return (
-    <div className="relative h-full bg-zinc-950">
+    <div ref={canvasRef} className="relative h-full bg-zinc-950">
       <CanvasNodeActionsContext.Provider value={nodeActions}>
         <CanvasEdgeActionsContext.Provider value={edgeActions}>
           <ReactFlow
@@ -1296,6 +1330,13 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
         onRedo={handleRedo}
       />
       <ShapeToolbar
+        onCreate={(shape) =>
+          createNode({
+            shape: shape.shape,
+            width: shape.width,
+            height: shape.height,
+          })
+        }
         onDragStart={handleShapeDragStart}
         onDragMove={handleShapeDragMove}
         onDragEnd={handleShapeDragEnd}
