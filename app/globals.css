@@ -176,13 +176,78 @@
     justify-content: center;
   }
 
+  .ghostai-canvas-resize-line {
+    border-color: rgb(244 244 245 / 42%) !important;
+  }
+
+  .ghostai-canvas-resize-handle {
+    background: rgb(24 24 27) !important;
+    border: 1px solid rgb(244 244 245 / 72%) !important;
+    height: 0.55rem !important;
+    width: 0.55rem !important;
+  }
+
+  .ghostai-node-color-toolbar {
+    align-items: center;
+    background: rgb(24 24 27 / 94%);
+    border: 1px solid rgb(244 244 245 / 12%);
+    border-radius: 999px;
+    box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 28%);
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .ghostai-node-color-swatch {
+    background:
+      linear-gradient(
+        135deg,
+        var(--ghostai-swatch-bg) 0%,
+        var(--ghostai-swatch-bg) 62%,
+        var(--ghostai-swatch-text) 63%,
+        var(--ghostai-swatch-text) 100%
+      );
+    border: 1px solid rgb(244 244 245 / 18%);
+    border-radius: 999px;
+    height: 1.15rem;
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease,
+      transform 120ms ease;
+    width: 1.15rem;
+  }
+
+  .ghostai-node-color-swatch:hover {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--ghostai-swatch-text) 38%, transparent),
+      0 0 0.35rem color-mix(in srgb, var(--ghostai-swatch-text) 34%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .ghostai-node-color-swatch-active {
+    border-color: rgb(244 244 245 / 84%);
+    box-shadow:
+      0 0 0 2px rgb(24 24 27),
+      0 0 0 3px var(--ghostai-swatch-text);
+  }
+
   .ghostai-canvas-handle {
     background: rgb(244 244 245);
     border: 2px solid rgb(24 24 27);
     height: 0.55rem;
     opacity: 0;
-    transition: opacity 120ms ease;
+    transition:
+      border-color 120ms ease,
+      opacity 120ms ease,
+      transform 120ms ease;
     width: 0.55rem;
+  }
+
+  .ghostai-canvas-handle:hover,
+  .ghostai-canvas-handle.connectingfrom,
+  .ghostai-canvas-handle.connectingto {
+    border-color: rgb(9 9 11);
+    transform: scale(1.18);
   }
 
   .ghostai-canvas-node:hover .ghostai-canvas-handle,
@@ -190,10 +255,71 @@
     opacity: 1;
   }
 
-  .ghostai-canvas-minimap {
-    background: rgb(17 17 19 / 92%);
-    border: 1px solid rgb(63 63 70 / 45%);
-    border-radius: 0;
-    box-shadow: none;
+  .ghostai-canvas-edge-hitbox {
+    cursor: pointer;
   }
+
+  .ghostai-canvas-edge-path {
+    stroke: rgb(212 212 216 / 58%);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    transition:
+      filter 140ms ease,
+      stroke 140ms ease,
+      stroke-width 140ms ease;
+  }
+
+  .ghostai-canvas-edge-path-active,
+  .react-flow__edge.selected .ghostai-canvas-edge-path,
+  .react-flow__edge:hover .ghostai-canvas-edge-path {
+    filter: drop-shadow(0 0 0.45rem rgb(244 244 245 / 22%));
+    stroke: rgb(244 244 245 / 92%);
+    stroke-width: 2.35;
+  }
+
+  .ghostai-canvas-edge-label {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    left: 0;
+    max-width: min(18rem, 42vw);
+    pointer-events: all;
+    position: absolute;
+    top: 0;
+  }
+
+  .ghostai-canvas-edge-label-pill,
+  .ghostai-canvas-edge-label-hint,
+  .ghostai-canvas-edge-label-input {
+    border: 1px solid rgb(244 244 245 / 14%);
+    border-radius: 999px;
+    box-shadow: 0 0.45rem 1.1rem rgb(0 0 0 / 22%);
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1;
+    max-width: min(18rem, 42vw);
+    min-height: 1.45rem;
+    padding: 0.35rem 0.6rem;
+    white-space: nowrap;
+  }
+
+  .ghostai-canvas-edge-label-pill {
+    background: rgb(24 24 27 / 92%);
+    color: rgb(244 244 245);
+  }
+
+  .ghostai-canvas-edge-label-hint {
+    background: rgb(24 24 27 / 58%);
+    color: rgb(244 244 245 / 42%);
+  }
+
+  .ghostai-canvas-edge-label-input {
+    background: rgb(24 24 27 / 96%);
+    color: rgb(244 244 245);
+    outline: none;
+    text-align: center;
+    width: auto;
+  }
+
 }

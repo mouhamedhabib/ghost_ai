@@ -1,6 +1,6 @@
 "use client"
 
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { PanelLeftClose, PanelLeftOpen, Zap } from "lucide-react"
 import { UserButton } from "@clerk/nextjs"
 
 import { Button } from "@/components/ui/button"
@@ -10,12 +10,14 @@ import { cn } from "@/lib/utils"
 type EditorNavbarProps = {
   isSidebarOpen: boolean
   onToggleSidebar: () => void
+  onOpenStarterTemplates?: () => void
   className?: string
 }
 
 export function EditorNavbar({
   isSidebarOpen,
   onToggleSidebar,
+  onOpenStarterTemplates,
   className,
 }: EditorNavbarProps) {
   const SidebarIcon = isSidebarOpen ? PanelLeftClose : PanelLeftOpen
@@ -40,7 +42,21 @@ export function EditorNavbar({
         </Button>
       </div>
 
-      <div className="min-w-0" />
+      <div className="flex min-w-0 items-center justify-center gap-2">
+        {onOpenStarterTemplates && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-muted-foreground hover:text-foreground"
+            aria-label="Import starter template"
+            onClick={onOpenStarterTemplates}
+          >
+            <Zap className="size-4" />
+            <span className="hidden sm:inline text-xs">Templates</span>
+          </Button>
+        )}
+      </div>
 
       <div className="flex min-w-0 items-center justify-end">
         <UserButton

@@ -7,6 +7,8 @@ import { EditorCanvas } from "@/components/editor/canvas"
 import { ProjectDialogProvider } from "@/components/editor/project-dialog-provider"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
 import { ShareDialog } from "@/components/editor/share-dialog"
+import { StarterTemplatesModal } from "@/components/editor/starter-templates-modal"
+import type { CanvasTemplate } from "@/components/editor/starter-templates"
 import {
   useProjectDialogContext,
 } from "@/components/editor/project-dialog-provider"
@@ -45,6 +47,16 @@ export function WorkspacePage({
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = React.useState(true);
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = React.useState(false);
+  const importTemplateRef = React.useRef<(template: CanvasTemplate) => void>(() => { });
+
+  const handleCanvasReady = React.useCallback((importFn: (template: CanvasTemplate) => void) => {
+    importTemplateRef.current = importFn;
+  }, []);
+
+  const handleImportTemplate = React.useCallback((template: CanvasTemplate) => {
+    importTemplateRef.current(template);
+  }, []);
 
   return (
     <ProjectDialogProvider>
@@ -54,6 +66,7 @@ export function WorkspacePage({
           projectName={projectName}
           onShareProject={() => setIsShareDialogOpen(true)}
           onToggleAiSidebar={() => setIsAiSidebarOpen((prev) => !prev)}
+          onOpenTemplates={() => setIsTemplatesModalOpen(true)}
         />
         <ShareDialog
           open={isShareDialogOpen}
@@ -61,6 +74,11 @@ export function WorkspacePage({
           projectId={projectId}
           projectName={projectName}
           canManage={canManageSharing}
+        />
+        <StarterTemplatesModal
+          open={isTemplatesModalOpen}
+          onOpenChange={setIsTemplatesModalOpen}
+          onImport={handleImportTemplate}
         />
 
         <div className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -90,7 +108,10 @@ export function WorkspacePage({
           </div>
 
           <main className="relative min-h-0 flex-1 overflow-hidden bg-zinc-950">
-            <EditorCanvas roomId={projectId} />
+            <EditorCanvas
+              roomId={projectId}
+              onCanvasReady={handleCanvasReady}
+            />
           </main>
 
           <aside

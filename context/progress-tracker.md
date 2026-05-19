@@ -63,6 +63,39 @@ change.
   - Delete dialog shows project name being deleted
   - Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass
 
+- Implemented starter template library from `context/feature_specs/18-starter-template.md`:
+  - Created `components/editor/starter-templates.ts` with:
+    - `CanvasTemplate` type for template structure
+    - `CANVAS_TEMPLATES` array with three pre-built templates: Microservices, CI/CD Pipeline, and Event-Driven System
+    - Helper functions `createNode()`, `createEdge()`, and `calculateTemplateBounds()` for readable template definitions
+    - Template nodes use shared canvas types and existing node color palette
+  - Created `components/editor/starter-templates-modal.tsx` with:
+    - `TemplatePreview` component that renders SVG previews of templates (280x200px fixed size)
+    - Preview rendering includes edge lines and all shape types (rectangle, circle, diamond, pill, hexagon, cylinder)
+    - Modal dialog with scrollable grid of template cards
+    - Each card displays template name, description, and import button
+    - `StarterTemplatesModal` component with open/close state and onImport callback
+  - Updated `components/editor/workspace-navbar.tsx`:
+    - Added `onOpenTemplates` optional callback prop
+    - Added Zap icon button to open templates modal
+  - Updated `components/editor/workspace-page.tsx`:
+    - Added state for templates modal open/close
+    - Created ref and callback for template import function
+    - Wired StarterTemplatesModal into page layout
+    - Connected EditorCanvas onCanvasReady callback
+  - Updated `components/editor/canvas.tsx`:
+    - Created `CanvasTemplate` type import and `EditorCanvasProps` with `onCanvasReady` callback
+    - Added `handleImportTemplate()` in FlowCanvas that:
+      - Removes all existing nodes and edges
+      - Adds template nodes and edges to canvas
+      - Fits viewport to show imported template
+    - Created `onCanvasReady` effect to expose import function to parent component
+    - Added context setup (not actively used but available for future expansion)
+  - Integration flow: Template selection → Modal → WorkspacePage callback → EditorCanvas → FlowCanvas import handler
+  - Template import replaces current canvas content (clears before adding)
+  - Uses existing Liveblocks collaborative state management (`onNodesChange`, `onEdgesChange`)
+  - Verified `npm run build` passes without errors
+
 ## In Progress
 
 - None currently.

@@ -188,5 +188,6 @@ fabric
 
 Canvas visual issues:
 
-
+console eroor : at 18/05/2026 
+Unable to add filesystem: <illegal path>
 
