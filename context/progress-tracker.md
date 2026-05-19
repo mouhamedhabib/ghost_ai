@@ -5,11 +5,11 @@ change.
 
 ## Current Phase
 
-- Authentication integration complete
+- All core features complete: auth integration, editor shell, project management UI, database setup, and project APIs wired to frontend.
 
 ## Current Goal
 
-- Prepare for the next feature chapter.
+- Ready for next feature chapter.
 
 ## Completed
 
@@ -37,6 +37,64 @@ change.
 - Added a dedicated project dialog hook/provider for create, rename, and delete dialog state, form state, loading state, and live slug previews without API calls or persistence.
 - Wired editor home create, sidebar create, sidebar rename, and sidebar delete actions to the dialog flow.
 - Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass.
+
+- Implemented Prisma setup from `context/feature_specs/05_prisma.md` with Project and ProjectCollaborator models, Prisma client singleton with adapter for PostgreSQL, and successful migration and build.
+- Implemented project API routes from `context/feature_specs/06project_apis.md`:
+  - `GET /api/projects` lists current user's projects
+  - `POST /api/projects` creates a project with default name "Untitled Project"
+  - `PATCH /api/projects/[projectId]` renames project (owner-only)
+  - `DELETE /api/projects/[projectId]` deletes project (owner-only)
+  - All routes enforce authentication (401 for unauthenticated, 403 for non-owners)
+  - Uses Clerk auth() and Prisma with PostgreSQL adapter
+- Installed missing `@prisma/client@^7.8.0` dependency
+- Verified `npm run build` passes with all API routes compiled
+
+- Implemented wire-up from `context/feature_specs/07wire_editor_home.md`:
+  - Created `lib/projects.ts` with server-side `getProjectsForUser()` that fetches owned and shared projects using Clerk auth and Prisma
+  - Converted `editor-home.tsx` to a server component that fetches real project data server-side
+  - Created `editor-home-client.tsx` client wrapper that calls `setInitialProjects()` to populate sidebar/dialogs on mount
+  - Updated `useProjectDialogs` hook to call real API endpoints:
+    - `POST /api/projects` creates project and navigates to workspace on success
+    - `PATCH /api/projects/[id]` renames project and updates state on success
+    - `DELETE /api/projects/[id]` deletes project and redirects if deleting active workspace
+  - Sidebar now displays real owned and shared projects from database
+  - Create dialog generates room ID preview from project name
+  - Rename dialog pre-fills current project name
+  - Delete dialog shows project name being deleted
+  - Verified `npx tsc --noEmit`, `npm run lint`, and `npm run build` pass
+
+- Implemented starter template library from `context/feature_specs/18-starter-template.md`:
+  - Created `components/editor/starter-templates.ts` with:
+    - `CanvasTemplate` type for template structure
+    - `CANVAS_TEMPLATES` array with three pre-built templates: Microservices, CI/CD Pipeline, and Event-Driven System
+    - Helper functions `createNode()`, `createEdge()`, and `calculateTemplateBounds()` for readable template definitions
+    - Template nodes use shared canvas types and existing node color palette
+  - Created `components/editor/starter-templates-modal.tsx` with:
+    - `TemplatePreview` component that renders SVG previews of templates (280x200px fixed size)
+    - Preview rendering includes edge lines and all shape types (rectangle, circle, diamond, pill, hexagon, cylinder)
+    - Modal dialog with scrollable grid of template cards
+    - Each card displays template name, description, and import button
+    - `StarterTemplatesModal` component with open/close state and onImport callback
+  - Updated `components/editor/workspace-navbar.tsx`:
+    - Added `onOpenTemplates` optional callback prop
+    - Added Zap icon button to open templates modal
+  - Updated `components/editor/workspace-page.tsx`:
+    - Added state for templates modal open/close
+    - Created ref and callback for template import function
+    - Wired StarterTemplatesModal into page layout
+    - Connected EditorCanvas onCanvasReady callback
+  - Updated `components/editor/canvas.tsx`:
+    - Created `CanvasTemplate` type import and `EditorCanvasProps` with `onCanvasReady` callback
+    - Added `handleImportTemplate()` in FlowCanvas that:
+      - Removes all existing nodes and edges
+      - Adds template nodes and edges to canvas
+      - Fits viewport to show imported template
+    - Created `onCanvasReady` effect to expose import function to parent component
+    - Added context setup (not actively used but available for future expansion)
+  - Integration flow: Template selection → Modal → WorkspacePage callback → EditorCanvas → FlowCanvas import handler
+  - Template import replaces current canvas content (clears before adding)
+  - Uses existing Liveblocks collaborative state management (`onNodesChange`, `onEdgesChange`)
+  - Verified `npm run build` passes without errors
 
 ## In Progress
 

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 
 export type ProjectItem = {
   id: string
@@ -14,27 +15,6 @@ type ProjectDialog =
   | { type: "rename"; project: ProjectItem }
   | { type: "delete"; project: ProjectItem }
 
-const mockProjects: ProjectItem[] = [
-  {
-    id: "atlas-house",
-    name: "Atlas House",
-    slug: "atlas-house",
-    access: "owned",
-  },
-  {
-    id: "courtyard-studio",
-    name: "Courtyard Studio",
-    slug: "courtyard-studio",
-    access: "owned",
-  },
-  {
-    id: "harbor-library",
-    name: "Harbor Library",
-    slug: "harbor-library",
-    access: "shared",
-  },
-]
-
 export function createProjectSlug(name: string) {
   return (
     name
@@ -46,7 +26,8 @@ export function createProjectSlug(name: string) {
 }
 
 export function useProjectDialogs() {
-  const [projects, setProjects] = React.useState<ProjectItem[]>(mockProjects)
+  const router = useRouter()
+  const [projects, setProjects] = React.useState<ProjectItem[]>([])
   const [dialog, setDialog] = React.useState<ProjectDialog | null>(null)
   const [projectName, setProjectName] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
@@ -80,7 +61,11 @@ export function useProjectDialogs() {
     setDialog({ type: "delete", project })
   }, [])
 
-  const submitDialog = React.useCallback(() => {
+  const setInitialProjects = React.useCallback((initialProjects: ProjectItem[]) => {
+    setProjects(initialProjects)
+  }, [])
+
+  const submitDialog = React.useCallback(async () => {
     if (isLoading) {
       return
     }
@@ -97,39 +82,82 @@ export function useProjectDialogs() {
 
     setIsLoading(true)
 
-    window.setTimeout(() => {
+    try {
       if (dialog.type === "create") {
-        const nextProject: ProjectItem = {
-          id: `${slugPreview}-${Date.now()}`,
-          name: trimmedName,
-          slug: slugPreview,
+        // POST /api/projects
+        const response = await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: trimmedName }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to create project")
+        }
+
+        const newProject = await response.json()
+        const projectItem: ProjectItem = {
+          id: newProject.id,
+          name: newProject.name,
+          slug: newProject.id,
           access: "owned",
         }
 
-        setProjects((current) => [nextProject, ...current])
-      }
+        setProjects((current) => [projectItem, ...current])
+        setDialog(null)
+        setProjectName("")
 
-      if (dialog.type === "rename") {
+        // Navigate to the new project workspace
+        router.push(`/editor/${newProject.id}`)
+      } else if (dialog.type === "rename") {
+        // PATCH /api/projects/[id]
+        const response = await fetch(`/api/projects/${dialog.project.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: trimmedName }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to rename project")
+        }
+
         setProjects((current) =>
           current.map((project) =>
             project.id === dialog.project.id
-              ? { ...project, name: trimmedName, slug: slugPreview }
+              ? { ...project, name: trimmedName }
               : project
           )
         )
-      }
+        setDialog(null)
+        setProjectName("")
+      } else if (dialog.type === "delete") {
+        // DELETE /api/projects/[id]
+        const response = await fetch(`/api/projects/${dialog.project.id}`, {
+          method: "DELETE",
+        })
 
-      if (dialog.type === "delete") {
+        if (!response.ok) {
+          throw new Error("Failed to delete project")
+        }
+
         setProjects((current) =>
           current.filter((project) => project.id !== dialog.project.id)
         )
-      }
+        setDialog(null)
+        setProjectName("")
 
+        // Redirect if deleting active workspace (check if currently on /editor/[id])
+        if (window.location.pathname.startsWith(`/editor/${dialog.project.id}`)) {
+          router.push("/editor")
+        }
+      }
+    } catch (error) {
+      console.error("Dialog submission error:", error)
+      // Optionally show error to user here
+    } finally {
       setIsLoading(false)
-      setDialog(null)
-      setProjectName("")
-    }, 200)
-  }, [dialog, isLoading, projectName, slugPreview])
+    }
+  }, [dialog, isLoading, projectName, router])
 
   return {
     dialog,
@@ -143,6 +171,7 @@ export function useProjectDialogs() {
     openRenameDialog,
     setProjectName,
     submitDialog,
+    setInitialProjects,
   }
 }
 

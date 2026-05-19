@@ -1,6 +1,7 @@
 "use client"
 
 import { Pencil, Plus, Trash2, X } from "lucide-react"
+import Link from "next/link"
 
 import { useProjectDialogContext } from "@/components/editor/project-dialog-provider"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,8 @@ type ProjectSidebarProps = {
   isOpen: boolean
   onClose: () => void
   className?: string
+  currentRoomId?: string
+  variant?: "floating" | "workspace"
 }
 
 function EmptyProjectState({ label }: { label: string }) {
@@ -23,8 +26,10 @@ function EmptyProjectState({ label }: { label: string }) {
 
 function ProjectList({
   access,
+  currentRoomId,
 }: {
   access: "owned" | "shared"
+  currentRoomId?: string
 }) {
   const {
     openDeleteDialog,
@@ -44,21 +49,22 @@ function ProjectList({
   return (
     <div className="grid gap-1">
       {scopedProjects.map((project) => (
-        <div
+        <Link
           key={project.id}
-          className="group flex min-h-12 items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          href={`/editor/${project.id}`}
+          className={cn(
+            "group flex min-h-12 items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/50",
+            project.id === currentRoomId && "bg-sidebar-accent text-sidebar-accent-foreground"
+          )}
         >
-          <button
-            type="button"
-            className="min-w-0 flex-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/50"
-          >
+          <div className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">
               {project.name}
             </span>
             <span className="block truncate text-xs text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground/70">
               {project.slug}
             </span>
-          </button>
+          </div>
           {project.access === "owned" ? (
             <div className="flex shrink-0 items-center gap-1">
               <Button
@@ -66,7 +72,11 @@ function ProjectList({
                 variant="ghost"
                 size="icon-xs"
                 aria-label={`Rename ${project.name}`}
-                onClick={() => openRenameDialog(project)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openRenameDialog(project)
+                }}
               >
                 <Pencil />
               </Button>
@@ -75,13 +85,17 @@ function ProjectList({
                 variant="ghost"
                 size="icon-xs"
                 aria-label={`Delete ${project.name}`}
-                onClick={() => openDeleteDialog(project)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openDeleteDialog(project)
+                }}
               >
                 <Trash2 />
               </Button>
             </div>
           ) : null}
-        </div>
+        </Link>
       ))}
     </div>
   )
@@ -91,8 +105,11 @@ export function ProjectSidebar({
   isOpen,
   onClose,
   className,
+  currentRoomId,
+  variant = "floating",
 }: ProjectSidebarProps) {
   const { openCreateDialog } = useProjectDialogContext()
+  const isWorkspace = variant === "workspace"
 
   return (
     <>
@@ -103,15 +120,20 @@ export function ProjectSidebar({
         onClick={onClose}
         className={cn(
           "fixed inset-0 z-30 bg-background/65 transition-opacity duration-200 md:hidden",
+          isWorkspace && "top-12",
           isOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
       />
       <aside
-        aria-hidden={!isOpen}
-        inert={!isOpen}
+        aria-hidden={!isOpen && !isWorkspace}
+        inert={!isOpen && !isWorkspace}
         className={cn(
-          "fixed top-16 bottom-4 left-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col rounded-lg border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-background/50 transition-transform duration-200 ease-out",
+          "fixed z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-background/50 transition-transform duration-200 ease-out",
+          isWorkspace
+            ? "top-12 bottom-0 left-0 rounded-none border-y-0 border-l-0 md:static md:z-auto md:w-64 md:shrink-0 md:translate-x-0 md:border-y-0 md:border-l-0 md:shadow-none"
+            : "top-16 bottom-4 left-4 rounded-lg",
           isOpen ? "translate-x-0" : "pointer-events-none -translate-x-[calc(100%+2rem)]",
+          isWorkspace && !isOpen && "md:pointer-events-auto",
           className
         )}
       >
@@ -134,10 +156,10 @@ export function ProjectSidebar({
             <TabsTrigger value="shared">Shared</TabsTrigger>
           </TabsList>
           <TabsContent value="my-projects" className="min-h-0">
-            <ProjectList access="owned" />
+            <ProjectList access="owned" currentRoomId={currentRoomId} />
           </TabsContent>
           <TabsContent value="shared" className="min-h-0">
-            <ProjectList access="shared" />
+            <ProjectList access="shared" currentRoomId={currentRoomId} />
           </TabsContent>
         </Tabs>
 
