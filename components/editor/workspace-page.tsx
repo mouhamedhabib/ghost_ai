@@ -3,18 +3,19 @@
 import * as React from "react"
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 
+import { AiSidebar } from "@/components/editor/ai-sidebar"
 import { EditorCanvas } from "@/components/editor/canvas"
 import { ProjectDialogProvider } from "@/components/editor/project-dialog-provider"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
 import { ShareDialog } from "@/components/editor/share-dialog"
 import { StarterTemplatesModal } from "@/components/editor/starter-templates-modal"
 import type { CanvasTemplate } from "@/components/editor/starter-templates"
+import type { CanvasSaveStatus } from "@/hooks/useCanvasAutosave"
 import {
   useProjectDialogContext,
 } from "@/components/editor/project-dialog-provider"
 import { WorkspaceNavbar } from "@/components/editor/workspace-navbar"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import type { ProjectItem } from "@/components/editor/use-project-dialogs"
 
 type WorkspacePageProps = {
@@ -48,7 +49,9 @@ export function WorkspacePage({
   const [isAiSidebarOpen, setIsAiSidebarOpen] = React.useState(true);
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<CanvasSaveStatus>("saved");
   const importTemplateRef = React.useRef<(template: CanvasTemplate) => void>(() => { });
+  const saveCanvasRef = React.useRef<() => Promise<void>>(async () => { });
 
   const handleCanvasReady = React.useCallback((importFn: (template: CanvasTemplate) => void) => {
     importTemplateRef.current = importFn;
@@ -58,13 +61,23 @@ export function WorkspacePage({
     importTemplateRef.current(template);
   }, []);
 
+  const handleSaveCanvasReady = React.useCallback((saveNow: () => Promise<void>) => {
+    saveCanvasRef.current = saveNow;
+  }, []);
+
+  const handleSaveProject = React.useCallback(() => {
+    void saveCanvasRef.current();
+  }, []);
+
   return (
     <ProjectDialogProvider>
       <div className="flex h-dvh min-h-screen flex-col overflow-hidden bg-background text-foreground">
         <WorkspaceProjectInitializer initialProjects={initialProjects} />
         <WorkspaceNavbar
           projectName={projectName}
+          saveStatus={saveStatus}
           onShareProject={() => setIsShareDialogOpen(true)}
+          onSaveProject={handleSaveProject}
           onToggleAiSidebar={() => setIsAiSidebarOpen((prev) => !prev)}
           onOpenTemplates={() => setIsTemplatesModalOpen(true)}
         />
@@ -111,26 +124,15 @@ export function WorkspacePage({
             <EditorCanvas
               roomId={projectId}
               onCanvasReady={handleCanvasReady}
+              onSaveStatusChange={setSaveStatus}
+              onSaveNowReady={handleSaveCanvasReady}
             />
           </main>
 
-          <aside
-            className={cn(
-              "absolute inset-y-0 right-0 z-30 flex w-[min(20rem,calc(100vw-2rem))] flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-background/50 transition-transform duration-200 ease-out md:relative md:z-auto md:w-80 md:shadow-none",
-              isAiSidebarOpen
-                ? "translate-x-0"
-                : "pointer-events-none translate-x-full md:absolute"
-            )}
-          >
-            <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-4">
-              <h2 className="text-sm font-medium">AI Assistant</h2>
-            </div>
-            <div className="flex min-h-0 flex-1 items-center justify-center">
-              <p className="text-sm text-sidebar-foreground/60">
-                AI chat coming soon
-              </p>
-            </div>
-          </aside>
+          <AiSidebar
+            isOpen={isAiSidebarOpen}
+            onClose={() => setIsAiSidebarOpen(false)}
+          />
         </div>
       </div>
     </ProjectDialogProvider>

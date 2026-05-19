@@ -96,6 +96,25 @@ change.
   - Uses existing Liveblocks collaborative state management (`onNodesChange`, `onEdgesChange`)
   - Verified `npm run build` passes without errors
 
+- Implemented presence avatars and live cursors from `context/feature_specs/19-presence-avatars-cursor.md`:
+  - Added a canvas-only top-right participant group in `components/editor/canvas.tsx`
+  - Uses Clerk `useUser()` to resolve the current user and filters matching Liveblocks users out of collaborator avatars
+  - Renders collaborators as display-only avatars with image, initials fallback, five-avatar limit, overflow chip, and dark-canvas rings
+  - Renders the current user separately through Clerk `UserButton`, with divider only when collaborators are present
+  - Replaced the default React Flow cursor helper with custom Liveblocks cursor broadcasting on React Flow `onMouseMove` and clearing on `onMouseLeave`
+  - Added custom live cursor pointers and name badges colored from Liveblocks user metadata
+  - Updated `liveblocks.config.ts` presence typing to `cursor` and `thinking`
+  - Verified `npm run build` passes
+
+- Implemented AI sidebar shell from `context/feature_specs/20-ai-sidebar-shell.md`:
+  - Added sidebar-specific color token aliases in `app/globals.css` for base surfaces, elevated/subtle surfaces, text roles, borders, brand tint, and accent text.
+  - Created `components/editor/ai-sidebar.tsx` with parent-controlled open/close state while preserving the existing right-side floating slide transition and shadow treatment.
+  - Added the AI Workspace header with bot icon, subtitle, and close button.
+  - Added shadcn Tabs for AI Architect and Specs with muted inactive styling and accent active styling.
+  - Built the AI Architect tab with scrollable chat area, empty state, starter prompt chips, right/left message bubbles, auto-sizing textarea, and Enter-to-send behavior.
+  - Built the Specs tab with Generate Spec button and a static elevated demo spec card with disabled download action.
+  - Verified `npm run build` passes.
+
 ## In Progress
 
 - None currently.

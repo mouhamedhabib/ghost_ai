@@ -1,6 +1,18 @@
 Show active room participants inside the editor canvas view,
 without changing the editor home navbar.
 
+## Progress
+
+- [x] Read the presence avatar/cursor spec and relevant Liveblocks guidance.
+- [x] Keep the editor home navbar unchanged.
+- [x] Add canvas-only participant avatar group.
+- [x] Resolve the current user from Clerk and exclude them from Liveblocks collaborator avatars.
+- [x] Render the current user through Clerk UserButton only.
+- [x] Add Liveblocks cursor broadcasting from React Flow mouse events.
+- [x] Render live cursors for other participants only.
+- [x] Update `liveblocks.config.ts` presence typing to include `cursor` and `thinking`.
+- [x] Run verification.
+
 ## Implementation
 
 1. Keep the existing navbar behavior as-is.
