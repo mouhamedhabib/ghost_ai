@@ -17,6 +17,9 @@ import {
 import { WorkspaceNavbar } from "@/components/editor/workspace-navbar"
 import { Button } from "@/components/ui/button"
 import type { ProjectItem } from "@/components/editor/use-project-dialogs"
+import { useUser } from "@clerk/nextjs"
+import { AiStatusProvider } from "@/components/editor/ai-status-context"
+import { AiChatProvider } from "@/components/editor/ai-chat-context"
 
 type WorkspacePageProps = {
   projectId: string;
@@ -69,6 +72,13 @@ export function WorkspacePage({
     void saveCanvasRef.current();
   }, []);
 
+  const { user } = useUser()
+
+  const userName =
+    user?.fullName ||
+    user?.primaryEmailAddress?.emailAddress ||
+    "Anonymous"
+
   return (
     <ProjectDialogProvider>
       <div className="flex h-dvh min-h-screen flex-col overflow-hidden bg-background text-foreground">
@@ -94,8 +104,10 @@ export function WorkspacePage({
           onImport={handleImportTemplate}
         />
 
-        <div className="relative flex min-h-0 flex-1 overflow-hidden">
-          <ProjectSidebar
+        <AiChatProvider roomId={projectId} userName={userName}>
+        <AiStatusProvider>
+          <div className="relative flex min-h-0 flex-1 overflow-hidden">
+            <ProjectSidebar
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             currentRoomId={projectId}
@@ -132,8 +144,11 @@ export function WorkspacePage({
           <AiSidebar
             isOpen={isAiSidebarOpen}
             onClose={() => setIsAiSidebarOpen(false)}
+            projectId={projectId}
           />
-        </div>
+          </div>
+        </AiStatusProvider>
+        </AiChatProvider>
       </div>
     </ProjectDialogProvider>
   );

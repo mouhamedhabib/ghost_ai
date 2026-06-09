@@ -26,6 +26,7 @@ import {
   ClientSideSuspense,
   LiveblocksProvider,
   RoomProvider,
+  useEventListener,
   useCanRedo,
   useCanUndo,
   useOther,
@@ -37,10 +38,12 @@ import {
   shallow,
 } from "@liveblocks/react/suspense"
 import {
+  Bot,
   Circle,
   Cylinder,
   Diamond,
   Hexagon,
+  Loader2,
   Maximize2,
   type LucideIcon,
   Pill,
@@ -133,6 +136,11 @@ const DEFAULT_EDGE_MARKER = {
   height: 18,
 }
 const MAX_VISIBLE_COLLABORATORS = 5
+const MAX_AI_STATUS_MESSAGES = 5
+
+import { useAiStatus, type AiStatusMessage } from "@/components/editor/ai-status-context"
+import { useAiChat } from "@/components/editor/ai-chat-context"
+import { AiChatMessageSchema } from "@/types/tasks"
 
 function createCanvasNodeId(shape: CanvasNode["data"]["shape"]) {
   return `${shape}-${crypto.randomUUID()}`
@@ -1007,6 +1015,76 @@ function CanvasControlBar({
   )
 }
 
+function AiStatusFeed() {
+  const [messages, setMessages] = React.useState<AiStatusMessage[]>([])
+
+  useEventListener(({ event }) => {
+    if (event.type !== "ai-status") {
+      return
+    }
+
+    setMessages((currentMessages) => [
+      event,
+      ...currentMessages.filter((message) => message.id !== event.id),
+    ].slice(0, MAX_AI_STATUS_MESSAGES))
+  })
+
+  if (messages.length === 0) {
+    return null
+  }
+
+  const latestMessage = messages[0]
+
+  return (
+    <div className="pointer-events-none absolute left-4 top-4 z-30 w-[min(22rem,calc(100%-2rem))] rounded-lg border border-white/10 bg-zinc-950/85 p-3 text-zinc-100 shadow-2xl shadow-black/35 backdrop-blur">
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-violet-950 text-violet-100",
+            latestMessage.kind === "processing" && "animate-pulse",
+            latestMessage.kind === "error" && "bg-rose-950 text-rose-100",
+            latestMessage.kind === "complete" && "bg-teal-950 text-teal-100"
+          )}
+        >
+          <Bot className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-semibold uppercase tracking-normal text-zinc-400">
+            Ghost AI
+          </p>
+          <p className="mt-1 text-sm leading-5 text-zinc-100">
+            {latestMessage.message}
+          </p>
+          {messages.length > 1 && (
+            <div className="mt-2 grid gap-1 border-t border-white/10 pt-2">
+              {messages.slice(1, 3).map((message) => (
+                <p key={message.id} className="truncate text-xs text-zinc-500">
+                  {message.message}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AiChatRoomBridge() {
+  const { _addMessage } = useAiChat()
+
+  useEventListener(({ event }) => {
+    if (event.type !== "ai-chat") return
+
+    const parsed = AiChatMessageSchema.safeParse(event)
+    if (!parsed.success) return
+
+    _addMessage(parsed.data)
+  })
+
+  return null
+}
+
 function getInitials(name: string) {
   const initials = name
     .split(/\s+/)
@@ -1031,6 +1109,7 @@ function PresenceAvatarGroup() {
           name: other.info.name,
           avatar: other.info.avatar,
           color: other.info.color,
+          thinking: other.presence.thinking,
         })),
     shallow
   )
@@ -1049,7 +1128,10 @@ function PresenceAvatarGroup() {
             {visibleCollaborators.map((collaborator) => (
               <div
                 key={`${collaborator.id}-${collaborator.connectionId}`}
-                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-950 bg-zinc-900 text-[11px] font-semibold text-zinc-100 ring-1 ring-white/20"
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-950 bg-zinc-900 text-[11px] font-semibold text-zinc-100 ring-1 ring-white/20",
+                  collaborator.thinking && "animate-pulse ring-2 ring-violet-300/80"
+                )}
                 style={{
                   backgroundColor: collaborator.avatar
                     ? undefined
@@ -1103,6 +1185,7 @@ function LiveCursorLayer() {
 
 function LiveCursor({ connectionId }: { connectionId: number }) {
   const cursor = useOther(connectionId, (other) => other.presence.cursor)
+  const thinking = useOther(connectionId, (other) => other.presence.thinking)
   const info = useOther(connectionId, (other) => other.info)
 
   if (!cursor) {
@@ -1135,10 +1218,11 @@ function LiveCursor({ connectionId }: { connectionId: number }) {
         />
       </svg>
       <div
-        className="absolute left-4 top-4 max-w-40 truncate rounded-full px-2 py-1 text-xs font-medium text-white shadow-lg shadow-black/30 ring-1 ring-black/20"
+        className="absolute left-4 top-4 flex items-center gap-1.5 max-w-40 truncate rounded-full px-2 py-1 text-xs font-medium text-white shadow-lg shadow-black/30 ring-1 ring-black/20"
         style={{ backgroundColor: color }}
       >
-        {name}
+        {thinking && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
+        <span className="truncate">{name}</span>
       </div>
     </div>
   )
@@ -1364,6 +1448,14 @@ function FlowCanvas({
     reactFlowInstance,
     undo: handleUndo,
     redo: handleRedo,
+  })
+
+  const { updateStatus } = useAiStatus()
+
+  useEventListener(({ event }) => {
+    if (event.type === "ai-status") {
+      updateStatus(event)
+    }
   })
 
   const createNode = React.useCallback(
@@ -1605,6 +1697,7 @@ function FlowCanvas({
           </ReactFlow>
         </CanvasEdgeActionsContext.Provider>
       </CanvasNodeActionsContext.Provider>
+      <AiStatusFeed />
       <PresenceAvatarGroup />
       <CanvasControlBar
         reactFlowInstance={reactFlowInstance}
@@ -1666,6 +1759,7 @@ export function EditorCanvas({
             fallback={<CanvasFallback message="Loading canvas..." />}
           >
             <CanvasContext.Provider value={canvasContextValue}>
+              <AiChatRoomBridge />
               <FlowCanvas
                 projectId={roomId}
                 onCanvasReady={handleCanvasReady}

@@ -1,0 +1,45 @@
+{
+  "configPath": "/home/wsl/GitHub/ghostai/.trigger/tmp/build-qPXOMd/trigger.config.mjs",
+  "customConditions": [
+  ],
+  "prompts": [
+  ],
+  "queues": [
+  ],
+  "runtime": "node",
+  "runtimeVersion": "24.12.0",
+  "tasks": [
+    {
+      "entryPoint": "/home/wsl/GitHub/ghostai/.trigger/tmp/build-qPXOMd/trigger/design-agent.mjs",
+      "filePath": "trigger/design-agent.ts",
+      "id": "design-agent",
+      "maxDuration": 3600,
+      "retry": {
+        "factor": 1.8,
+        "maxAttempts": 2,
+        "maxTimeoutInMs": 10000,
+        "minTimeoutInMs": 1000,
+        "randomize": false
+      }
+    },
+    {
+      "entryPoint": "/home/wsl/GitHub/ghostai/.trigger/tmp/build-qPXOMd/trigger/generate-spec.mjs",
+      "filePath": "trigger/generate-spec.ts",
+      "id": "generate-spec",
+      "maxDuration": 3600,
+      "retry": {
+        "factor": 1.8,
+        "maxAttempts": 2,
+        "maxTimeoutInMs": 10000,
+        "minTimeoutInMs": 1000,
+        "randomize": false
+      }
+    }
+  ],
+  "timings": {
+    "trigger/design-agent.ts": 30.870720000000006,
+    "trigger/example.ts": 0.4354730000000018,
+    "trigger/generate-spec.ts": 44.632483000000036
+  },
+  "workerEntryPoint": "/home/wsl/GitHub/ghostai/.trigger/tmp/build-qPXOMd/node_modules/trigger.dev/dist/esm/entryPoints/dev-run-worker.mjs"
+}
