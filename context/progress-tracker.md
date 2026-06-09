@@ -96,9 +96,53 @@ change.
   - Uses existing Liveblocks collaborative state management (`onNodesChange`, `onEdgesChange`)
   - Verified `npm run build` passes without errors
 
+- Implemented presence avatars and live cursors from `context/feature_specs/19-presence-avatars-cursor.md`:
+  - Added a canvas-only top-right participant group in `components/editor/canvas.tsx`
+  - Uses Clerk `useUser()` to resolve the current user and filters matching Liveblocks users out of collaborator avatars
+  - Renders collaborators as display-only avatars with image, initials fallback, five-avatar limit, overflow chip, and dark-canvas rings
+  - Renders the current user separately through Clerk `UserButton`, with divider only when collaborators are present
+  - Replaced the default React Flow cursor helper with custom Liveblocks cursor broadcasting on React Flow `onMouseMove` and clearing on `onMouseLeave`
+  - Added custom live cursor pointers and name badges colored from Liveblocks user metadata
+  - Updated `liveblocks.config.ts` presence typing to `cursor` and `thinking`
+  - Verified `npm run build` passes
+
+- Implemented AI sidebar shell from `context/feature_specs/20-ai-sidebar-shell.md`:
+  - Added sidebar-specific color token aliases in `app/globals.css` for base surfaces, elevated/subtle surfaces, text roles, borders, brand tint, and accent text.
+  - Created `components/editor/ai-sidebar.tsx` with parent-controlled open/close state while preserving the existing right-side floating slide transition and shadow treatment.
+  - Added the AI Workspace header with bot icon, subtitle, and close button.
+  - Added shadcn Tabs for AI Architect and Specs with muted inactive styling and accent active styling.
+  - Built the AI Architect tab with scrollable chat area, empty state, starter prompt chips, right/left message bubbles, auto-sizing textarea, and Enter-to-send behavior.
+  - Built the Specs tab with Generate Spec button and a static elevated demo spec card with disabled download action.
+  - Verified `npm run build` passes.
+
+- Implemented design agent API backend wiring from `context/feature_specs/22-design-agent-api.md`:
+  - Added `TaskRun` Prisma model, indexes, project relation, and migration for Trigger.dev run ownership tracking.
+  - Added `POST /api/ai/design` to validate prompt, room ID, and project ID, verify project access, trigger the `design-agent` task, persist the run, and return the run ID.
+  - Added `POST /api/ai/design/token` to verify run ownership and return a run-scoped Trigger.dev public token.
+  - Added `trigger/design-agent.ts` with a minimal callable task that logs and echoes `prompt` and `roomId`.
+  - Updated Prisma client import to use the generated package entrypoint and removed the Prisma 7-deprecated datasource URL from `schema.prisma`.
+  - Verified `npm run build` passes.
+
+- Implemented full design agent logic from `context/feature_specs/23-design-agent-logic.md`:
+  - Updated `trigger/design-agent.ts` to interpret prompts with Gemini through `@ai-sdk/google`.
+  - Applies AI-generated add, move, resize, data update, delete node, add edge, and delete edge actions through Liveblocks React Flow `mutateFlow()`.
+  - Enforces allowed canvas node shapes, the existing node color palette, minimum dimensions, and readable spacing bounds before mutating the room.
+  - Publishes shared Liveblocks AI status events for start, processing, completion, and failures.
+  - Sets Ghost AI server-side Liveblocks presence with cursor and thinking state while the task runs, then clears it on finish.
+  - Wired the AI Architect form to trigger `POST /api/ai/design`.
+  - Added a canvas AI status feed and thinking indicators on AI presence/cursor UI.
+  - Updated Trigger.dev imports to the v4 `@trigger.dev/sdk` entrypoint.
+  - Verified `npx tsc --noEmit` and `npm run build` pass.
+
 ## In Progress
 
-- None currently.
+- Implemented AI presence state and shared AI activity indicators from `context/feature_specs/24-ai-presence-state.md`.
+- Implemented real-time room chat feed in the AI sidebar from `context/feature_specs/25-sidebar-chat-feed.md`.
+- Implemented backend flow for AI-powered spec generation from `context/feature_specs/27-spec-generation-flow.md` with Trigger.dev task and token routes.
+- Implemented spec persistence and download routes from `context/feature_specs/28-spec-persistence-download.md` using Vercel Blob and Prisma.
+- Implemented spec generation UI integration from `context/feature_specs/29-spec-ui-integration.md` allowing users to view, preview, and download specs from the AI sidebar.
+
+## In Progress
 
 ## Next Up
 

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../../trigger/example.ts"],
+  "sourcesContent": ["// import { logger, task } from \"@trigger.dev/sdk/v3\";\n\n// export const helloWorld = task({\n//   id: \"hello-world\",\n//   run: async (payload: { name?: string }) => {\n//     const name = payload.name ?? \"World\";\n\n//     logger.info(\"Hello from Trigger.dev\", { name });\n\n//     return {\n//       message: `Hello, ${name}!`,\n//     };\n//   },\n// });\n"],
+  "mappings": ";;;;;AAAA;",
+  "names": []
+}

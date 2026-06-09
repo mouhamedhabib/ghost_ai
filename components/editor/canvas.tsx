@@ -14,26 +14,36 @@ import {
   type NodeProps,
   Position,
   ReactFlow,
+  ViewportPortal,
   addEdge,
   getSmoothStepPath,
   type Connection,
   type ReactFlowInstance,
 } from "@xyflow/react"
-import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow"
+import { UserButton, useUser } from "@clerk/nextjs"
+import { useLiveblocksFlow } from "@liveblocks/react-flow"
 import {
   ClientSideSuspense,
   LiveblocksProvider,
   RoomProvider,
+  useEventListener,
   useCanRedo,
   useCanUndo,
+  useOther,
+  useOthers,
+  useOthersConnectionIds,
   useRedo,
   useUndo,
+  useUpdateMyPresence,
+  shallow,
 } from "@liveblocks/react/suspense"
 import {
+  Bot,
   Circle,
   Cylinder,
   Diamond,
   Hexagon,
+  Loader2,
   Maximize2,
   type LucideIcon,
   Pill,
@@ -44,15 +54,22 @@ import {
   ZoomOut,
 } from "lucide-react"
 
-import type { CanvasEdge, CanvasNode } from "@/types/canvas"
+import type { CanvasEdge, CanvasNode, CanvasState } from "@/types/canvas"
 import { Button } from "@/components/ui/button"
+import {
+  type CanvasSaveStatus,
+  useCanvasAutosave,
+} from "@/hooks/useCanvasAutosave"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
+import { clerkAppearance } from "@/lib/clerk-appearance"
 import { cn } from "@/lib/utils"
 import type { CanvasTemplate } from "@/components/editor/starter-templates"
 
 type EditorCanvasProps = {
   roomId: string
   onCanvasReady?: (importFn: (template: CanvasTemplate) => void) => void
+  onSaveStatusChange?: (status: CanvasSaveStatus) => void
+  onSaveNowReady?: (saveNow: () => Promise<void>) => void
 }
 
 type CanvasContextValue = {
@@ -117,6 +134,16 @@ const DEFAULT_EDGE_MARKER = {
   color: "rgb(212 212 216)",
   width: 18,
   height: 18,
+}
+const MAX_VISIBLE_COLLABORATORS = 5
+const MAX_AI_STATUS_MESSAGES = 5
+
+import { useAiStatus, type AiStatusMessage } from "@/components/editor/ai-status-context"
+import { useAiChat } from "@/components/editor/ai-chat-context"
+import { AiChatMessageSchema } from "@/types/tasks"
+
+function createCanvasNodeId(shape: CanvasNode["data"]["shape"]) {
+  return `${shape}-${crypto.randomUUID()}`
 }
 
 const CanvasNodeActionsContext = React.createContext<{
@@ -271,6 +298,16 @@ function readShapeDragPayload(dataTransfer: DataTransfer): ShapeDragPayload | nu
   } catch {
     return null
   }
+}
+
+function isCanvasState(value: unknown): value is CanvasState {
+  if (!value || typeof value !== "object") {
+    return false
+  }
+
+  const canvas = value as Partial<CanvasState>
+
+  return Array.isArray(canvas.nodes) && Array.isArray(canvas.edges)
 }
 
 function CanvasNodeRenderer({ id, data, selected, width, height }: NodeProps<CanvasNode>) {
@@ -778,10 +815,12 @@ function ShapeDragPreview({ preview }: { preview: ShapeDragPreviewState | null }
 }
 
 function ShapeToolbar({
+  onCreate,
   onDragStart,
   onDragMove,
   onDragEnd,
 }: {
+  onCreate: (shape: ShapeDefinition) => void
   onDragStart: (preview: ShapeDragPreviewState) => void
   onDragMove: (position: Pick<ShapeDragPreviewState, "x" | "y">) => void
   onDragEnd: () => void
@@ -826,6 +865,16 @@ function ShapeToolbar({
     [onDragMove]
   )
 
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, shape: ShapeDefinition) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault()
+        onCreate(shape)
+      }
+    },
+    [onCreate]
+  )
+
   return (
     <div className="pointer-events-auto absolute bottom-15 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-2xl shadow-black/35 backdrop-blur">
       {SHAPES.map((shape) => {
@@ -842,6 +891,8 @@ function ShapeToolbar({
             data-node-shape={shape.shape}
             title={shape.label}
             aria-label={shape.label}
+            onClick={() => onCreate(shape)}
+            onKeyDown={(event) => handleKeyDown(event, shape)}
             onDragStart={(event) => handleDragStart(event, shape)}
             onDrag={handleDrag}
             onDragEnd={onDragEnd}
@@ -964,8 +1015,233 @@ function CanvasControlBar({
   )
 }
 
-function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: CanvasTemplate) => void) => void }) {
-  const nodeCounterRef = React.useRef(0)
+function AiStatusFeed() {
+  const [messages, setMessages] = React.useState<AiStatusMessage[]>([])
+
+  useEventListener(({ event }) => {
+    if (event.type !== "ai-status") {
+      return
+    }
+
+    setMessages((currentMessages) => [
+      event,
+      ...currentMessages.filter((message) => message.id !== event.id),
+    ].slice(0, MAX_AI_STATUS_MESSAGES))
+  })
+
+  if (messages.length === 0) {
+    return null
+  }
+
+  const latestMessage = messages[0]
+
+  return (
+    <div className="pointer-events-none absolute left-4 top-4 z-30 w-[min(22rem,calc(100%-2rem))] rounded-lg border border-white/10 bg-zinc-950/85 p-3 text-zinc-100 shadow-2xl shadow-black/35 backdrop-blur">
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-violet-950 text-violet-100",
+            latestMessage.kind === "processing" && "animate-pulse",
+            latestMessage.kind === "error" && "bg-rose-950 text-rose-100",
+            latestMessage.kind === "complete" && "bg-teal-950 text-teal-100"
+          )}
+        >
+          <Bot className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-semibold uppercase tracking-normal text-zinc-400">
+            Ghost AI
+          </p>
+          <p className="mt-1 text-sm leading-5 text-zinc-100">
+            {latestMessage.message}
+          </p>
+          {messages.length > 1 && (
+            <div className="mt-2 grid gap-1 border-t border-white/10 pt-2">
+              {messages.slice(1, 3).map((message) => (
+                <p key={message.id} className="truncate text-xs text-zinc-500">
+                  {message.message}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AiChatRoomBridge() {
+  const { _addMessage } = useAiChat()
+
+  useEventListener(({ event }) => {
+    if (event.type !== "ai-chat") return
+
+    const parsed = AiChatMessageSchema.safeParse(event)
+    if (!parsed.success) return
+
+    _addMessage(parsed.data)
+  })
+
+  return null
+}
+
+function getInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase()
+
+  return initials || "?"
+}
+
+function PresenceAvatarGroup() {
+  const { user } = useUser()
+  const collaborators = useOthers(
+    (others) =>
+      others
+        .filter((other) => other.id !== user?.id)
+        .map((other) => ({
+          connectionId: other.connectionId,
+          id: other.id,
+          name: other.info.name,
+          avatar: other.info.avatar,
+          color: other.info.color,
+          thinking: other.presence.thinking,
+        })),
+    shallow
+  )
+  const visibleCollaborators = collaborators.slice(0, MAX_VISIBLE_COLLABORATORS)
+  const overflowCount = Math.max(
+    collaborators.length - MAX_VISIBLE_COLLABORATORS,
+    0
+  )
+  const hasCollaborators = collaborators.length > 0
+
+  return (
+    <div className="pointer-events-auto absolute right-4 top-4 z-30 flex h-11 items-center rounded-full border border-white/10 bg-zinc-950/80 px-2 shadow-2xl shadow-black/35 backdrop-blur">
+      {hasCollaborators && (
+        <>
+          <div className="flex items-center -space-x-2 pr-2">
+            {visibleCollaborators.map((collaborator) => (
+              <div
+                key={`${collaborator.id}-${collaborator.connectionId}`}
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-950 bg-zinc-900 text-[11px] font-semibold text-zinc-100 ring-1 ring-white/20",
+                  collaborator.thinking && "animate-pulse ring-2 ring-violet-300/80"
+                )}
+                style={{
+                  backgroundColor: collaborator.avatar
+                    ? undefined
+                    : collaborator.color,
+                }}
+                aria-label={collaborator.name}
+              >
+                {collaborator.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={collaborator.avatar}
+                    alt=""
+                    className="size-full object-cover"
+                    draggable={false}
+                  />
+                ) : (
+                  <span>{getInitials(collaborator.name)}</span>
+                )}
+              </div>
+            ))}
+            {overflowCount > 0 && (
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-zinc-950 bg-zinc-800 text-[11px] font-semibold text-zinc-100 ring-1 ring-white/20">
+                +{overflowCount}
+              </div>
+            )}
+          </div>
+          <div className="mx-1 h-6 w-px bg-white/15" />
+        </>
+      )}
+      <div className="flex size-8 items-center justify-center [&_.cl-avatarBox]:size-8">
+        <UserButton
+          appearance={clerkAppearance}
+          userProfileProps={{ appearance: clerkAppearance }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function LiveCursorLayer() {
+  const connectionIds = useOthersConnectionIds()
+
+  return (
+    <ViewportPortal>
+      {connectionIds.map((connectionId) => (
+        <LiveCursor key={connectionId} connectionId={connectionId} />
+      ))}
+    </ViewportPortal>
+  )
+}
+
+function LiveCursor({ connectionId }: { connectionId: number }) {
+  const cursor = useOther(connectionId, (other) => other.presence.cursor)
+  const thinking = useOther(connectionId, (other) => other.presence.thinking)
+  const info = useOther(connectionId, (other) => other.info)
+
+  if (!cursor) {
+    return null
+  }
+
+  const color = info.color || "rgb(59 130 246)"
+  const name = info.name || "Collaborator"
+
+  return (
+    <div
+      className="pointer-events-none absolute left-0 top-0 z-20"
+      style={{
+        transform: `translate(${cursor.x}px, ${cursor.y}px)`,
+      }}
+    >
+      <svg
+        width="18"
+        height="22"
+        viewBox="0 0 18 22"
+        aria-hidden="true"
+        className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
+      >
+        <path
+          d="M2 2L15 12.5L8.3 13.5L5.1 20L2 2Z"
+          fill={color}
+          stroke="rgb(9 9 11)"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <div
+        className="absolute left-4 top-4 flex items-center gap-1.5 max-w-40 truncate rounded-full px-2 py-1 text-xs font-medium text-white shadow-lg shadow-black/30 ring-1 ring-black/20"
+        style={{ backgroundColor: color }}
+      >
+        {thinking && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
+        <span className="truncate">{name}</span>
+      </div>
+    </div>
+  )
+}
+
+function FlowCanvas({
+  projectId,
+  onCanvasReady,
+  onSaveStatusChange,
+  onSaveNowReady,
+}: {
+  projectId: string
+  onCanvasReady?: (importFn: (template: CanvasTemplate) => void) => void
+  onSaveStatusChange?: (status: CanvasSaveStatus) => void
+  onSaveNowReady?: (saveNow: () => Promise<void>) => void
+}) {
+  const canvasRef = React.useRef<HTMLDivElement>(null)
+  const didAttemptSavedLoadRef = React.useRef(false)
+  const latestCanvasRef = React.useRef<CanvasState>({ nodes: [], edges: [] })
   const [shapeDragPreview, setShapeDragPreview] =
     React.useState<ShapeDragPreviewState | null>(null)
   const [reactFlowInstance, setReactFlowInstance] =
@@ -974,6 +1250,7 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
   const redo = useRedo()
   const canUndo = useCanUndo()
   const canRedo = useCanRedo()
+  const updateMyPresence = useUpdateMyPresence()
   const { nodes, edges, onNodesChange, onEdgesChange, onDelete } =
     useLiveblocksFlow<CanvasNode, CanvasEdge>({
       suspense: true,
@@ -984,6 +1261,11 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
         initial: [],
       },
     })
+  const { status: saveStatus, saveNow } = useCanvasAutosave({
+    projectId,
+    nodes,
+    edges,
+  })
   const renderedEdges = React.useMemo(
     () =>
       edges.map((edge) => ({
@@ -997,6 +1279,89 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
       })),
     [edges]
   )
+
+  React.useEffect(() => {
+    latestCanvasRef.current = { nodes, edges }
+  }, [edges, nodes])
+
+  React.useEffect(() => {
+    onSaveStatusChange?.(saveStatus)
+  }, [onSaveStatusChange, saveStatus])
+
+  React.useEffect(() => {
+    onSaveNowReady?.(saveNow)
+  }, [onSaveNowReady, saveNow])
+
+  React.useEffect(() => {
+    if (didAttemptSavedLoadRef.current) {
+      return
+    }
+
+    didAttemptSavedLoadRef.current = true
+
+    if (nodes.length > 0 || edges.length > 0) {
+      return
+    }
+
+    let isCancelled = false
+
+    async function loadSavedCanvas() {
+      try {
+        const response = await fetch(`/api/projects/${projectId}/canvas`, {
+          cache: "no-store",
+        })
+
+        if (!response.ok) {
+          return
+        }
+
+        const payload = (await response.json()) as { canvas?: unknown }
+
+        if (!isCanvasState(payload.canvas) || isCancelled) {
+          return
+        }
+
+        const currentCanvas = latestCanvasRef.current
+
+        if (currentCanvas.nodes.length > 0 || currentCanvas.edges.length > 0) {
+          return
+        }
+
+        if (payload.canvas.nodes.length > 0) {
+          onNodesChange(
+            payload.canvas.nodes.map((node) => ({
+              type: "add" as const,
+              item: node,
+            }))
+          )
+        }
+
+        if (payload.canvas.edges.length > 0) {
+          onEdgesChange(
+            payload.canvas.edges.map((edge) => ({
+              type: "add" as const,
+              item: edge,
+            }))
+          )
+        }
+
+        setTimeout(() => {
+          reactFlowInstance?.fitView({
+            duration: VIEWPORT_ANIMATION_DURATION,
+            padding: 0.18,
+          })
+        }, 50)
+      } catch (error) {
+        console.error("Error loading saved canvas:", error)
+      }
+    }
+
+    void loadSavedCanvas()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [edges.length, nodes.length, onEdgesChange, onNodesChange, projectId, reactFlowInstance])
   const handleUndo = React.useCallback(() => {
     if (canUndo) {
       undo()
@@ -1007,6 +1372,24 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
       redo()
     }
   }, [canRedo, redo])
+  const handleCanvasMouseMove = React.useCallback(
+    (event: React.MouseEvent) => {
+      if (!reactFlowInstance) {
+        return
+      }
+
+      updateMyPresence({
+        cursor: reactFlowInstance.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        }),
+      })
+    },
+    [reactFlowInstance, updateMyPresence]
+  )
+  const handleCanvasMouseLeave = React.useCallback(() => {
+    updateMyPresence({ cursor: null })
+  }, [updateMyPresence])
 
   const handleImportTemplate = React.useCallback(
     (template: CanvasTemplate) => {
@@ -1067,6 +1450,55 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
     redo: handleRedo,
   })
 
+  const { updateStatus } = useAiStatus()
+
+  useEventListener(({ event }) => {
+    if (event.type === "ai-status") {
+      updateStatus(event)
+    }
+  })
+
+  const createNode = React.useCallback(
+    (
+      payload: ShapeDragPayload,
+      screenPosition?: Pick<ShapeDragPreviewState, "x" | "y">
+    ) => {
+      if (!reactFlowInstance) {
+        return
+      }
+
+      const canvasBounds = canvasRef.current?.getBoundingClientRect()
+      const anchor = screenPosition ?? {
+        x: canvasBounds ? canvasBounds.left + canvasBounds.width / 2 : window.innerWidth / 2,
+        y: canvasBounds ? canvasBounds.top + canvasBounds.height / 2 : window.innerHeight / 2,
+      }
+      const position = reactFlowInstance.screenToFlowPosition(anchor)
+      const nextNode: CanvasNode = {
+        id: createCanvasNodeId(payload.shape),
+        type: "canvas",
+        position: {
+          x: position.x - payload.width / 2,
+          y: position.y - payload.height / 2,
+        },
+        width: payload.width,
+        height: payload.height,
+        measured: {
+          width: payload.width,
+          height: payload.height,
+        },
+        data: {
+          label: SHAPES.find((shape) => shape.shape === payload.shape)?.label ?? "",
+          color: DEFAULT_NODE_COLOR,
+          textColor: DEFAULT_NODE_TEXT_COLOR,
+          shape: payload.shape,
+        },
+      }
+
+      onNodesChange([{ type: "add", item: nextNode }])
+    },
+    [onNodesChange, reactFlowInstance]
+  )
+
   const handleDragOver = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
     if (event.dataTransfer.types.includes(SHAPE_DRAG_MIME_TYPE)) {
       event.preventDefault()
@@ -1087,43 +1519,18 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
     (event: React.DragEvent<HTMLDivElement>) => {
       const payload = readShapeDragPayload(event.dataTransfer)
 
-      if (!payload || !reactFlowInstance) {
+      if (!payload) {
         return
       }
 
       event.preventDefault()
       setShapeDragPreview(null)
-
-      const position = reactFlowInstance.screenToFlowPosition({
+      createNode(payload, {
         x: event.clientX,
         y: event.clientY,
       })
-      const counter = nodeCounterRef.current + 1
-      const nextNode: CanvasNode = {
-        id: `${payload.shape}-${Date.now()}-${counter}`,
-        type: "canvas",
-        position: {
-          x: position.x - payload.width / 2,
-          y: position.y - payload.height / 2,
-        },
-        width: payload.width,
-        height: payload.height,
-        measured: {
-          width: payload.width,
-          height: payload.height,
-        },
-        data: {
-          label: SHAPES.find((shape) => shape.shape === payload.shape)?.label ?? "",
-          color: DEFAULT_NODE_COLOR,
-          textColor: DEFAULT_NODE_TEXT_COLOR,
-          shape: payload.shape,
-        },
-      }
-
-      nodeCounterRef.current = counter
-      onNodesChange([{ type: "add", item: nextNode }])
     },
-    [onNodesChange, reactFlowInstance]
+    [createNode]
   )
 
   const handleConnect = React.useCallback(
@@ -1258,7 +1665,7 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
   )
 
   return (
-    <div className="relative h-full bg-zinc-950">
+    <div ref={canvasRef} className="relative h-full bg-zinc-950">
       <CanvasNodeActionsContext.Provider value={nodeActions}>
         <CanvasEdgeActionsContext.Provider value={edgeActions}>
           <ReactFlow
@@ -1271,6 +1678,8 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
             onEdgesChange={onEdgesChange}
             onConnect={handleConnect}
             onDelete={onDelete}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseLeave={handleCanvasMouseLeave}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             connectionMode={ConnectionMode.Loose}
@@ -1284,10 +1693,12 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
               size={1}
               color="rgba(244, 244, 245, 0.14)"
             />
-            <Cursors />
+            <LiveCursorLayer />
           </ReactFlow>
         </CanvasEdgeActionsContext.Provider>
       </CanvasNodeActionsContext.Provider>
+      <AiStatusFeed />
+      <PresenceAvatarGroup />
       <CanvasControlBar
         reactFlowInstance={reactFlowInstance}
         canUndo={canUndo}
@@ -1296,6 +1707,13 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
         onRedo={handleRedo}
       />
       <ShapeToolbar
+        onCreate={(shape) =>
+          createNode({
+            shape: shape.shape,
+            width: shape.width,
+            height: shape.height,
+          })
+        }
         onDragStart={handleShapeDragStart}
         onDragMove={handleShapeDragMove}
         onDragEnd={handleShapeDragEnd}
@@ -1305,7 +1723,12 @@ function FlowCanvas({ onCanvasReady }: { onCanvasReady?: (importFn: (template: C
   )
 }
 
-export function EditorCanvas({ roomId, onCanvasReady }: EditorCanvasProps) {
+export function EditorCanvas({
+  roomId,
+  onCanvasReady,
+  onSaveStatusChange,
+  onSaveNowReady,
+}: EditorCanvasProps) {
   const canvasContextValue = React.useMemo(
     () => ({
       importTemplate: () => { },
@@ -1326,7 +1749,7 @@ export function EditorCanvas({ roomId, onCanvasReady }: EditorCanvasProps) {
         id={roomId}
         initialPresence={{
           cursor: null,
-          isThinking: false,
+          thinking: false,
         }}
       >
         <CanvasErrorBoundary
@@ -1336,7 +1759,13 @@ export function EditorCanvas({ roomId, onCanvasReady }: EditorCanvasProps) {
             fallback={<CanvasFallback message="Loading canvas..." />}
           >
             <CanvasContext.Provider value={canvasContextValue}>
-              <FlowCanvas onCanvasReady={handleCanvasReady} />
+              <AiChatRoomBridge />
+              <FlowCanvas
+                projectId={roomId}
+                onCanvasReady={handleCanvasReady}
+                onSaveStatusChange={onSaveStatusChange}
+                onSaveNowReady={onSaveNowReady}
+              />
             </CanvasContext.Provider>
           </ClientSideSuspense>
         </CanvasErrorBoundary>

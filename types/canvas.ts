@@ -21,3 +21,8 @@ export type CanvasEdgeData = {
 }
 
 export type CanvasEdge = Edge<CanvasEdgeData, "canvas">
+
+export type CanvasState = {
+  nodes: CanvasNode[]
+  edges: CanvasEdge[]
+}

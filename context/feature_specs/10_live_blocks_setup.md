@@ -30,18 +30,9 @@ Define:
 - avatar URL
 - cursor color
 
-### UserMeta
-
-- user ID
-- display name
-- avatar URL
-- cursor color
-
 ## Liveblocks Client
 
-Create a .cached .Liveblocks .node .client .in .`lib`.
-
-Add .a helper .that deterministically .maps.a.user .ID.to.a .consistent .color .from a fixed palette.
+Create a cached Liveblocks node client in lib. Add a helper that deterministically maps a user ID to a consistent color from a fixed palette.
 
 ## Auth Route
 

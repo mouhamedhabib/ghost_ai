@@ -191,3 +191,85 @@ Canvas visual issues:
 console eroor : at 18/05/2026 
 Unable to add filesystem: <illegal path>
 
+i have new eroor today 19/05/2026 i see in my screen 
+## Error Type
+Console Error
+
+## Error Message
+Failed to save canvas
+
+
+    at saveCanvasState (hooks/useCanvasAutosave.ts:32:11)
+    at async useCanvasAutosave.useCallback[save] (hooks/useCanvasAutosave.ts:66:9)
+
+## Code Frame
+  30 |
+  31 |   if (!response.ok) {
+> 32 |     throw new Error("Failed to save canvas")
+     |           ^
+  33 |   }
+  34 | }
+  35 |
+
+Next.js version: 16.2.4 (Turbopack)
+-- fix it 
+
+## Resolution 19/05/2026
+
+Updated `hooks/useCanvasAutosave.ts` so expected autosave API failures no
+longer throw a client-side `Error` object. The Save button still enters the
+`error` state when the API cannot persist the canvas, but Next.js no longer
+shows the red console error for `Failed to save canvas`.
+
+Updated `app/api/projects/[projectId]/canvas/route.ts` to return a clear 503
+response when Blob autosave is not configured.
+
+Review the editor workspace implementation and fix the following
+issues. Check 'components/editor' first. Do not break existing
+features.
+
+## Issues
+problem 19/05/2026
+### 1. Save Button in Workspace Navbar
+Status: Pending to test
+
+Read the navbar component and the autosave hook before
+implementing.
+
+The workspace navbar is missing a Save button. The autosave
+hook already exists and tracks saving/saved/error states
+wire the button to it.
+
+Add the Save button to the workspace navbar only. The navbar
+is shared with editor home so conditionally render the button
+based on workspace context - it must not appear on the editor
+home navbar.
+
+Button behavior:
+
+- default state: shows "Save"
+- while saving: shows "Saving ... "
+- after successful save: shows "Saved" briefly then returns
+to "Save"
+- on error: shows "Error" briefly then returns to "Save"
+- clicking it triggers a manual save through the same save
+function the autosave hook uses
+
+Also fix the canvas save API route. Open the route file at
+`app/api/projects/[projectId]/canvas/route.ts' and make
+these two changes:
+
+- in the PUT handler change 'access: "public"' to
+access: "private"' in the Vercel Blob put call
+- in the GET handler replace any raw fetch call with the
+Vercel Blob SDK to retrieve the blob content using the
+stored URL
+
+### 2. Delete Nodes and Edges
+
+Read Liveblocks agent skills before implementing this.
+Then read the canvas wrapper component and the existing
+node and edge mutation helpers.
+
+Selected nodes and edges cannot be deleted from the canvas.
+
